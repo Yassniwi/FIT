@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitBot - Fitness Assistant</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #ff7e5f, #feb47b);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 700px;
+      height: 90vh;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background: #e8590c;
+      color: #ffffff;
+      padding: 16px 20px;
+    }
+
+    .chat-header h1 { font-size: 1.3rem; }
+    .chat-header p { font-size: 0.85rem; opacity: 0.9; margin-top: 4px; }
+
+    .chat-box {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: #fff8f3;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #e8590c;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      background: #ffffff;
+      color: #333333;
+      border: 1px solid #f1d9c8;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.error {
+      align-self: flex-start;
+      background: #ffe3e3;
+      color: #c92a2a;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+      padding: 14px;
+      border-top: 1px solid #f1d9c8;
+      background: #ffffff;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .input-area input:focus { border-color: #e8590c; }
+
+    .input-area button {
+      padding: 0 22px;
+      background: #e8590c;
+      color: #ffffff;
+      border: none;
+      border-radius: 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .input-area button:hover { background: #d9480f; }
+    .input-area button:disabled { background: #ccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>FitBot</h1>
+      <p>Your fitness assistant - ask me about workouts, nutrition and recovery</p>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+      <div class="message bot">Hi! I'm FitBot. Ask me anything about fitness - workouts, exercise form, muscle building, fat loss or recovery.</div>
+    </div>
+
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Ask a fitness question..." autocomplete="off">
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById("chatBox");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const history = [];
+
+    function addMessage(text, type) {
+      const div = document.createElement("div");
+      div.className = "message " + type;
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      addMessage(message, "user");
+      userInput.value = "";
+      sendBtn.disabled = true;
+
+      const loading = addMessage("Typing...", "bot");
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, history })
+        });
+        const data = await response.json();
+        loading.remove();
+
+        if (data.error) {
+          addMessage(data.error, "error");
+        } else {
+          addMessage(data.reply, "bot");
+          history.push({ role: "user", text: message });
+          history.push({ role: "model", text: data.reply });
+        }
+      } catch (error) {
+        loading.remove();
+        addMessage("Unable to reach the server. Please try again.", "error");
+      }
+
+      sendBtn.disabled = false;
+      userInput.focus();
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>
